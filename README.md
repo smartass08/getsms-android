@@ -18,15 +18,30 @@ Encrypts incoming raw SMS messages on the device with AES-256-GCM before enqueui
 
 ## Install from GitHub Releases
 
-Download the APK from [GitHub Releases](https://github.com/smartass08/getsms-android/releases) and verify its build provenance:
+Download the signed release APK (`getsms-android-vX.Y.Z.apk`) from [GitHub Releases](https://github.com/smartass08/getsms-android/releases) and verify its build provenance:
 
 ```bash
-gh attestation verify getsms-android-v1.0.0.apk --repo smartass08/getsms-android
+gh attestation verify getsms-android-v1.0.2.apk --repo smartass08/getsms-android
 ```
 
-On Android 15 and later, sideloaded apps require enabling restricted settings before granting SMS permission:
-open **App info -> menu (⋮) -> Allow restricted settings**, authenticate, then return to the app and grant SMS permission.
-(Installing via `adb install` bypasses the restricted-settings prompt.)
+### Bypassing "App blocked to protect your device" (Play Protect Enhanced Fraud Protection)
+
+In select regions (including India, Singapore, Thailand, and Brazil), Google Play Protect automatically blocks installing any sideloaded APK that declares `RECEIVE_SMS` when opened from a web browser, messaging app, or file manager—even when properly signed and clean.
+
+Use either of these installation methods:
+
+- **Option A — Install on the phone (no PC required):**
+  1. Open **Google Play Store -> Profile icon -> Play Protect -> Settings (gear)** and turn **Scan apps with Play Protect** off temporarily.
+  2. Install `getsms-android-vX.Y.Z.apk` from your Downloads.
+  3. Turn **Scan apps with Play Protect** back on immediately afterward.
+  4. On Android 15 and later, if the **SMS** permission is greyed out, open **App info -> menu (⋮) -> Allow restricted settings**, authenticate, then grant **SMS** permission.
+- **Option B — Install via `adb` (recommended for technical users):**
+  ```bash
+  adb install getsms-android-v1.0.2.apk
+  ```
+  `adb install` bypasses both Play Protect's sideload fraud block and Android 15's restricted-settings prompt (works over USB or Wireless Debugging).
+- **Option C — Auto-updates via Obtainium + Shizuku:**
+  Track this GitHub repository in [Obtainium](https://github.com/ImranR98/Obtainium) with its Shizuku installer enabled.
 
 ## Build locally
 

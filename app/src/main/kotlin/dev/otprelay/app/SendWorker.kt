@@ -1,13 +1,7 @@
 package dev.otprelay.app
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
-import android.content.pm.ServiceInfo
-import android.os.Build
 import androidx.work.CoroutineWorker
-import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import dev.otprelay.protocol.deriveKeys
 import kotlinx.coroutines.Dispatchers
@@ -54,30 +48,11 @@ class SendWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         }
     }
 
-    override suspend fun getForegroundInfo(): ForegroundInfo {
-        val title = applicationContext.getString(R.string.forwarding_sms)
-        applicationContext.getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL, title, NotificationManager.IMPORTANCE_LOW),
-        )
-        val notification = Notification.Builder(applicationContext, CHANNEL)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle(title)
-            .setOngoing(true)
-            .build()
-        val notificationId = (id.hashCode() and Int.MAX_VALUE).coerceAtLeast(1)
-        return if (Build.VERSION.SDK_INT >= 29) {
-            ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            ForegroundInfo(notificationId, notification)
-        }
-    }
-
     private fun isExpired(createdAt: Long): Boolean =
         createdAt <= 0 || System.currentTimeMillis() - createdAt >= 15 * 60 * 1000L
 
     internal companion object {
         const val BLOB = "blob"
         const val CREATED_AT = "created_at"
-        private const val CHANNEL = "otp_relay_send"
     }
 }

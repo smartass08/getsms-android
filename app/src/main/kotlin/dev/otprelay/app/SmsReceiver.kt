@@ -3,6 +3,7 @@ package dev.otprelay.app
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.provider.Telephony
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -100,7 +101,11 @@ class SmsReceiver : BroadcastReceiver() {
                 OneTimeWorkRequestBuilder<SendWorker>()
                     .addTag(tag)
                     .setInputData(workDataOf(SendWorker.BLOB to blob, SendWorker.CREATED_AT to createdAt))
-                    .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                    .apply {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                        }
+                    }
                     .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
                     .build()

@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">OTP Relay</string>
-    <string name="forwarding_sms">Forwarding SMS</string>
     <string name="sent">Delivered</string>
     <string name="send_rejected">The server rejected the message.</string>
     <string name="send_retry">Delivery failed. The app will retry.</string>

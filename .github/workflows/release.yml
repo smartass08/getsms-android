@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "code=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Run protocol vector tests and lint
+        run: ./gradlew --no-daemon :protocol:test :app:lintDebug
+
+      - name: Build debug APK
+        run: |
+          ./gradlew --no-daemon :app:assembleDebug \
+            -PversionName="${{ steps.meta.outputs.version }}" \
+            -PversionCode="${{ steps.meta.outputs.code }}"
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/getsms-android-${{ steps.meta.outputs.tag }}-debug.apk"
+
+      - name: Build signed release APK (when signing secrets are configured)
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          KEYSTORE_FILE="${RUNNER_TEMP}/release.keystore"
+          trap 'rm -f "$KEYSTORE_FILE"' EXIT
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_FILE"
+          ANDROID_KEYSTORE_PATH="$KEYSTORE_FILE" ./gradlew --no-daemon :app:assembleRelease \
+            -PversionName="${{ steps.meta.outputs.version }}" \
+            -PversionCode="${{ steps.meta.outputs.code }}"
+          APK="app/build/outputs/apk/release/app-release.apk"
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify "$APK"
+          cp "$APK" "dist/getsms-android-${{ steps.meta.outputs.tag }}.apk"
+
+      - name: Generate SHA-256 checksums
+        run: |
+          (cd dist && sha256sum getsms-android-* > SHA256SUMS.txt)
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "dist/*"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: "getsms-android ${{ steps.meta.outputs.tag }}"
+          generate_release_notes: true
+          files: dist/*

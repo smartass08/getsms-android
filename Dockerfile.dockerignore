@@ -1,0 +1,9 @@
+**
+!AndroidApp/
+!AndroidApp/**
+!protocol/
+!protocol/test-vectors.json
+AndroidApp/.gradle/
+AndroidApp/.kotlin/
+AndroidApp/**/build/
+AndroidApp/local.properties
